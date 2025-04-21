@@ -59,6 +59,7 @@ We can show this by displaying the variable assigned to a header in a HTML tag (
 
 And the output will be a heading (h1) with the username. 
 
+
 # ReplAuth FAQ 
 
 The question is in a quote and in italic and the answer is in a bullet point.
