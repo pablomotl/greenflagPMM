@@ -57,6 +57,14 @@ def notify():
     requests.post(url, json=payload)
 
     return "Notificado", 200
-
+@app.route("/test")
+def test():
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": "✅ Prueba exitosa desde el servidor. ¡Todo funcionando!"
+    }
+    response = requests.post(url, json=payload)
+    return f"Mensaje enviado. Código: {response.status_code} – {response.text}"
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
