@@ -1,101 +1,58 @@
-# ==============================
-# GreenFlag Master Script – Pablo Motl
-# Alertas + Google Sheets + Telegram + Performance
-# Ejecuta automáticamente cada hora con cron
-# ==============================
-
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import requests
+import os
+import json
 import time
 from datetime import datetime
-from flask import Flask
+from flask import Flask, request
+import gspread
+from google.oauth2 import service_account
+import requests
 
 # === CONFIGURACIÓN ===
 
-import os
-
+# Variables de entorno
 bot_token = os.getenv("BOT_TOKEN")
 chat_id = os.getenv("CHAT_ID")
 sheet_url = os.getenv("SHEET_URL")
 
-# === AUTENTICACIÓN CON GOOGLE SHEETS ===
+# Credenciales de Google desde variable de entorno
+google_credentials_json = json.loads(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
 
+# Autenticación con Google Sheets
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
-import json
+credentials = service_account.Credentials.from_service_account_info(google_credentials_json, scopes=scope)
+gc = gspread.authorize(credentials)
+sheet = gc.open_by_url(sheet_url).sheet1
 
-credentials_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
-creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(credentials_json), scope)
-client = gspread.authorize(creds)
-sheet = client.open_by_url(sheet_url).sheet1
+# === SERVIDOR FLASK ===
 
-# === DATOS DE EJEMPLO PARA PRUEBA INICIAL ===
+app = Flask(__name__)
 
-activo = "ETH"
-tipo = "Cripto"
-fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-monto_usd = 150.0
-precio_entrada = 2500
-precio_actual = 2900
-resultado = round(precio_actual - precio_entrada, 2)
-rendimiento_pct = round((resultado / precio_entrada) * 100, 2)
-ytd = rendimiento_pct  # simplificado
-mtm = 3.1  # ejemplo estático
-
-# === PUBLICACIÓN EN TELEGRAM ===
-
-mensaje_telegram = f"""
-📊 [CIERRE AUTOMÁTICO – {fecha}]
-
-- Activo: {activo}
-- Tipo: {tipo}
-- Inversión: ${precio_entrada} MXN → Valor actual: ${precio_actual} MXN
-- Resultado: {f"{resultado:+.0f}"} MXN ({rendimiento_pct}%)
-- YTD: {ytd}%
-- MTM: {mtm}%
-
-#GreenFlag #PMAbundancia
-"""
-
-url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-print("➡️ Intentando enviar mensaje a Telegram...")
-print("Mensaje:", mensaje_telegram)
-response = requests.post(url,
-                         data={
-                             "chat_id": chat_id,
-                             "text": mensaje_telegram
-                         })
-print("🧾 Respuesta de Telegram:", response.text)
-
-print("➡️ Intentando enviar mensaje a Telegram...")
-print("Mensaje:", mensaje_telegram)
-
-# === REGISTRO EN GOOGLE SHEETS ===
-
-sheet.append_row([
-    fecha, activo, tipo, monto_usd, precio_entrada, precio_actual, resultado,
-    f"{rendimiento_pct}%", f"{ytd}%", f"{mtm}%", "Abierta"
-])
-
-# === ACTIVACIÓN DEL SERVIDOR PARA UPTIMEROBOT ===
-
-app = Flask('')
-
-
-@app.route('/')
+@app.route("/")
 def home():
-    return "Sistema activo."
+    return "Bot activo ✅"
 
+@app.route("/notify", methods=["POST"])
+def notify():
+    data = request.get_json()
 
-app.run(host='0.0.0.0', port=8080)
-from flask import request
+    mensaje = data.get("mensaje", "Sin mensaje")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Escribir en Google Sheet
+    sheet.append_row([now, mensaje])
 
-@app.route('/', methods=['GET', 'HEAD'])
-def home():
-    if request.method == 'HEAD':
-        return '', 200
-    return "Sistema activo."
+    # Enviar mensaje a Telegram
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": f"🟢 Notificación:\n\n{mensaje}"
+    }
+    requests.post(url, json=payload)
+
+    return "Notificado", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
