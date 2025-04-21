@@ -13,9 +13,11 @@ from flask import Flask
 
 # === CONFIGURACIÓN ===
 
-bot_token = "8126039848:AAG3Mkr4jbe5KJYoHrfQ4HlyIricgp8ZQYM"
-chat_id = "-1002341211105"
-sheet_url = "https://docs.google.com/spreadsheets/d/1GhtF77BkhUXNW-LdRE9DGIBTwcIRhNIX2Yb3pdGIM1w/edit"
+import os
+
+bot_token = os.getenv("BOT_TOKEN")
+chat_id = os.getenv("CHAT_ID")
+sheet_url = os.getenv("SHEET_URL")
 
 # === AUTENTICACIÓN CON GOOGLE SHEETS ===
 
