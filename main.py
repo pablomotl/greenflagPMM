@@ -15,14 +15,18 @@ chat_id = os.getenv("CHAT_ID")
 sheet_url = os.getenv("SHEET_URL")
 
 # Credenciales de Google desde variable de entorno
-google_credentials_json = json.loads(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
+import base64
+
+raw_credentials = os.getenv("GOOGLE_CREDENTIALS_BASE64")
+decoded = base64.b64decode(raw_credentials).decode("utf-8")
+service_account_info = json.loads(decoded)
 
 # Autenticación con Google Sheets
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
-credentials = service_account.Credentials.from_service_account_info(google_credentials_json, scopes=scope)
+credentials = service_account.Credentials.from_service_account_info(service_account_info, scopes=scope)
 gc = gspread.authorize(credentials)
 sheet = gc.open_by_url(sheet_url).sheet1
 
